@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -10,18 +10,18 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
-} from 'react-native';
-import { router } from 'expo-router';
-import * as Haptics from 'expo-haptics';
-import Svg, { Path } from 'react-native-svg';
-import { colors, typography, spacing, radius } from '../../lib/theme';
-import { SegmentedControl } from '../../components/ui/SegmentedControl';
-import { TextInput } from '../../components/ui/TextInput';
-import { useSignalLog } from '../../hooks/useSignalLog';
-import { useUserId } from '../../hooks/useUserId';
-import { JournalMode } from '../../lib/constants';
+} from "react-native";
+import { router } from "expo-router";
+import * as Haptics from "expo-haptics";
+import Svg, { Path } from "react-native-svg";
+import { colors, typography, spacing, radius } from "../../lib/theme";
+import { SegmentedControl } from "../../components/ui/SegmentedControl";
+import { TextInput } from "../../components/ui/TextInput";
+import { useSignalLog } from "../../hooks/useSignalLog";
+import { useUserId } from "../../hooks/useUserId";
+import { JournalMode } from "../../lib/constants";
 
-const MODE_LABELS = ['OPEN', 'STRUCTURED', 'SYSTEM'];
+const MODE_LABELS = ["OPEN", "STRUCTURED", "SYSTEM"];
 
 export default function NewJournalScreen() {
   const userId = useUserId();
@@ -29,30 +29,40 @@ export default function NewJournalScreen() {
 
   const [modeIndex, setModeIndex] = useState(0);
   const [clarity, setClarity] = useState(5);
-  const [openContent, setOpenContent] = useState('');
-  const [executedWell, setExecutedWell] = useState('');
-  const [needsAdjustment, setNeedsAdjustment] = useState('');
-  const [keyInsight, setKeyInsight] = useState('');
+  const [openContent, setOpenContent] = useState("");
+  const [executedWell, setExecutedWell] = useState("");
+  const [needsAdjustment, setNeedsAdjustment] = useState("");
+  const [keyInsight, setKeyInsight] = useState("");
 
-  const mode = modeIndex === 0 ? JournalMode.OPEN : modeIndex === 1 ? JournalMode.STRUCTURED : JournalMode.SYSTEM;
+  const mode =
+    modeIndex === 0
+      ? JournalMode.OPEN
+      : modeIndex === 1
+        ? JournalMode.STRUCTURED
+        : JournalMode.SYSTEM;
 
-  const canSave = mode === JournalMode.OPEN
-    ? openContent.trim().length > 0
-    : mode === JournalMode.STRUCTURED
-    ? executedWell.trim().length > 0 || needsAdjustment.trim().length > 0 || keyInsight.trim().length > 0
-    : false;
+  const canSave =
+    mode === JournalMode.OPEN
+      ? openContent.trim().length > 0
+      : mode === JournalMode.STRUCTURED
+        ? executedWell.trim().length > 0 ||
+          needsAdjustment.trim().length > 0 ||
+          keyInsight.trim().length > 0
+        : false;
 
   async function handleSave() {
-    let content = '';
+    let content = "";
 
     if (mode === JournalMode.OPEN) {
       content = openContent.trim();
     } else if (mode === JournalMode.STRUCTURED) {
       const parts = [];
-      if (executedWell.trim()) parts.push(`EXECUTED WELL:\n${executedWell.trim()}`);
-      if (needsAdjustment.trim()) parts.push(`NEEDS ADJUSTMENT:\n${needsAdjustment.trim()}`);
+      if (executedWell.trim())
+        parts.push(`EXECUTED WELL:\n${executedWell.trim()}`);
+      if (needsAdjustment.trim())
+        parts.push(`NEEDS ADJUSTMENT:\n${needsAdjustment.trim()}`);
       if (keyInsight.trim()) parts.push(`KEY INSIGHT:\n${keyInsight.trim()}`);
-      content = parts.join('\n\n');
+      content = parts.join("\n\n");
     }
 
     if (!content) return;
@@ -62,13 +72,13 @@ export default function NewJournalScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (err: any) {
-      Alert.alert('Failed to save signal', err.message);
+      Alert.alert("Failed to save signal", err.message);
     }
   }
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
       <SafeAreaView style={styles.safe}>
@@ -157,7 +167,8 @@ export default function NewJournalScreen() {
             <View style={styles.systemSkeleton}>
               <Text style={styles.systemLabel}>SYSTEM MODE</Text>
               <Text style={styles.systemText}>
-                AI-generated journaling prompts based on your execution data. Coming in the next update.
+                AI-generated journaling prompts based on your execution data.
+                Coming in the next update.
               </Text>
             </View>
           )}
@@ -166,7 +177,9 @@ export default function NewJournalScreen() {
           {mode !== JournalMode.SYSTEM && (
             <View style={styles.claritySection}>
               <Text style={styles.clarityLabel}>CLARITY — {clarity}/10</Text>
-              <Text style={styles.clarityDesc}>Mental clarity and focus level for today</Text>
+              <Text style={styles.clarityDesc}>
+                Mental clarity and focus level for today
+              </Text>
               <View style={styles.clarityRow}>
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((val) => (
                   <Pressable
@@ -181,10 +194,12 @@ export default function NewJournalScreen() {
                       val === clarity && styles.clarityButtonSelected,
                     ]}
                   >
-                    <Text style={[
-                      styles.clarityButtonText,
-                      val <= clarity && styles.clarityButtonTextActive,
-                    ]}>
+                    <Text
+                      style={[
+                        styles.clarityButtonText,
+                        val <= clarity && styles.clarityButtonTextActive,
+                      ]}
+                    >
                       {val}
                     </Text>
                   </Pressable>
@@ -199,21 +214,38 @@ export default function NewJournalScreen() {
 
           {mode !== JournalMode.SYSTEM && (
             <View style={styles.deployBtnWrap}>
-              <Pressable
-                onPress={handleSave}
-                disabled={!canSave || isCreating}
-              >
+              <Pressable onPress={handleSave} disabled={!canSave || isCreating}>
                 <View style={styles.deployBtn}>
                   {isCreating ? (
-                    <ActivityIndicator size="small" color={colors.signalOrange} />
+                    <ActivityIndicator
+                      size="small"
+                      color={colors.signalOrange}
+                    />
                   ) : (
                     <View style={styles.deployBtnInner}>
                       <View style={styles.deployBtnIcon}>
-                        <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
-                          <Path d="M12 5v14M5 12h14" stroke={canSave ? colors.signalOrange : colors.textMuted} strokeWidth={2.5} strokeLinecap="round" />
+                        <Svg
+                          width={12}
+                          height={12}
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <Path
+                            d="M12 5v14M5 12h14"
+                            stroke={
+                              canSave ? colors.signalOrange : colors.textMuted
+                            }
+                            strokeWidth={2.5}
+                            strokeLinecap="round"
+                          />
                         </Svg>
                       </View>
-                      <Text style={[styles.deployBtnText, !canSave && styles.deployBtnTextDisabled]}>
+                      <Text
+                        style={[
+                          styles.deployBtnText,
+                          !canSave && styles.deployBtnTextDisabled,
+                        ]}
+                      >
                         SAVE SIGNAL
                       </Text>
                     </View>
@@ -239,9 +271,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
@@ -287,10 +319,10 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: spacing.lg,
     minHeight: 160,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   systemLabel: {
     ...typography.micro,
@@ -300,7 +332,7 @@ const styles = StyleSheet.create({
   systemText: {
     ...typography.body,
     color: colors.textMuted,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 24,
   },
   claritySection: {
@@ -317,15 +349,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   clarityRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.xs,
   },
   clarityButton: {
     flex: 1,
     aspectRatio: 1,
     borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: colors.input,
     borderWidth: 1,
     borderColor: colors.border,
@@ -340,15 +372,15 @@ const styles = StyleSheet.create({
   },
   clarityButtonText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textMuted,
   },
   clarityButtonTextActive: {
     color: colors.accent,
   },
   clarityScale: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginTop: spacing.xs,
   },
   clarityScaleLabel: {
@@ -357,21 +389,21 @@ const styles = StyleSheet.create({
     fontSize: 9,
   },
   deployBtnWrap: {
-    position: 'relative',
+    position: "relative",
     marginTop: spacing.sm,
   },
   deployBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 14,
     borderRadius: radius.md,
     borderWidth: 0,
     backgroundColor: colors.input,
   },
   deployBtnInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   deployBtnIcon: {
@@ -379,12 +411,12 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: 'rgba(249, 115, 22, 0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: "rgba(249, 115, 22, 0.3)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   deployBtnText: {
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: "Inter_600SemiBold",
     fontSize: 12,
     letterSpacing: 1.5,
     color: colors.signalOrange,
