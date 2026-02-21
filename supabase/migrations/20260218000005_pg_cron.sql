@@ -1,0 +1,3 @@
+-- Schedule nightly metrics computation at 3:00 AM UTC
+-- Requires pg_cron extension (enable in Supabase dashboard under Extensions)
+-- SELECT cron.schedule('nightly-metrics', '0 3 * * *', 'SELECT compute_all_metrics_nightly()');

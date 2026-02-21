@@ -1,0 +1,330 @@
+---
+description: Momentum design system — colors, typography, spacing, components, and UI vibe for React Native + Expo + NativeWind
+globs: **/*.tsx, **/*.ts
+alwaysApply: true
+---
+
+# Momentum Design System
+
+## Vibe / Philosophy
+
+Momentum feels like **mission control software**, not a wellness app. The UI should feel like a high-stakes operational dashboard — precise, data-forward, clinical. No decorative illustrations, no celebration animations, no cheerful gradients. Execution is acknowledged with green. Everything else is zinc and shadow.
+
+- All-caps labels with letter spacing for section headers, tab names, tier headings
+- Data comes first — numbers and states are larger than their labels
+- Dark surfaces with subtle depth (not flat, not glassmorphic unless explicitly noted)
+- Micro-interactions through haptics (`expo-haptics`), not bouncy animations
+- Screens are named STATUS, LOG, SIGNAL, SYSTEM — never Home, Calendar, Journal, Chat
+
+---
+
+## Color Palette
+
+All colors live in `lib/theme.ts`. Never use raw hex strings in components — import from theme.
+
+```typescript
+// lib/theme.ts — canonical colors
+export const colors = {
+  // Surfaces
+  base:           '#09090B',  // Root background (near-black)
+  card:           '#111113',  // Card / elevated surface
+  input:          '#18181B',  // Input fields, code blocks
+  overlay:        '#000000CC', // Modal backdrop (80% opacity)
+
+  // Primary accent — emerald execution color
+  accent:         '#10B981',  // Emerald — execution success, primary CTAs
+  accentMuted:    'rgba(16,185,129,0.15)', // Selected/active states
+  accentDim:      'rgba(16,185,129,0.08)', // Subtle tint backgrounds
+
+  // Momentum Index gauge — blue (metric/data indicator, distinct from action accent)
+  indexBlue:      '#3B82F6',  // Momentum Index circular gauge ring
+  indexBlueMuted: 'rgba(59,130,246,0.15)',
+
+  // Text
+  textPrimary:    '#FAFAFA',  // Body, headings
+  textSecondary:  '#A1A1AA',  // Supporting info, subtitles
+  textMuted:      '#52525B',  // Labels, placeholders, disabled
+
+  // Borders
+  border:         '#27272A',  // Default border
+  borderActive:   'rgba(16,185,129,0.3)', // Focused/active input border
+
+  // Execution status
+  statusDone:     '#10B981',  // Emerald — fully executed
+  statusPartial:  '#A1A1AA',  // Neutral gray — partial
+  statusSkipped:  '#27272A',  // Very dark — skipped
+  statusMissed:   '#3F3F46',  // Dark zinc — missed (blends back)
+
+  // Protocol tier accents (dot indicators)
+  tierNonNeg:     '#EF4444',  // Red — NON-NEGOTIABLE tier dot
+  tierGrowth:     '#10B981',  // Emerald — GROWTH tier dot
+  tierRotating:   '#3B82F6',  // Blue — ROTATING_FOCUS tier dot
+
+  // Coaching style accents (onboarding + settings)
+  direct:         '#EF4444',  // Red/bold — DIRECT mode
+  strategic:      '#3B82F6',  // Blue — STRATEGIC mode
+  driven:         '#10B981',  // Emerald — DRIVEN mode
+
+  // Calibration slider semantic colors
+  sliderSleep:    '#8B5CF6',  // Purple
+  sliderEnergy:   '#06B6D4',  // Cyan
+  sliderWorkload: '#10B981',  // Emerald
+  sliderStress:   '#EF4444',  // Red
+  sliderFocus:    '#3B82F6',  // Blue
+  sliderRecovery: '#14B8A6',  // Teal
+
+  // App identity
+  brandPurple:    '#7C3AED',  // Momentum logo/icon background
+};
+```
+
+---
+
+## Typography
+
+Font family: **Inter** (loaded via `expo-font` in `app/_layout.tsx`).
+
+```typescript
+// lib/theme.ts — typography scale
+export const typography = {
+  micro:      { fontSize: 11, lineHeight: 16, letterSpacing: 1, textTransform: 'uppercase' as const },
+  caption:    { fontSize: 13, lineHeight: 18 },
+  body:       { fontSize: 15, lineHeight: 22 },
+  subhead:    { fontSize: 17, lineHeight: 24, fontWeight: '600' as const },
+  title:      { fontSize: 22, lineHeight: 28, fontWeight: '700' as const },
+  metricHero: { fontSize: 32, lineHeight: 38, fontWeight: '700' as const },
+  systemScore:{ fontSize: 48, lineHeight: 52, fontWeight: '700' as const },
+};
+
+export const fontWeights = {
+  regular:   '400' as const,
+  medium:    '500' as const,
+  semibold:  '600' as const,
+  bold:      '700' as const,
+};
+```
+
+**Rules:**
+- Section headers (MISSION BRIEFING, PROTOCOLS, RECENT SIGNALS): `micro` style — all-caps, `letterSpacing: 1`, `textSecondary` color
+- Tier labels (NON-NEGOTIABLE, GROWTH): `micro` style with corresponding tier accent color
+- Large numbers (Momentum Index, metrics): `systemScore` or `metricHero`
+- Body content: `body` in `textPrimary`
+- Supporting text, timestamps, metadata: `caption` in `textSecondary`
+- Disabled / placeholder: `textMuted`
+
+---
+
+## Spacing Scale
+
+```typescript
+// lib/theme.ts
+export const spacing = {
+  xs:  4,
+  sm:  8,
+  md:  16,
+  lg:  24,
+  xl:  32,
+  xxl: 48,
+};
+```
+
+**Layout rules:**
+- Screen horizontal padding: `md` (16) on each side
+- Card internal padding: `md` (16)
+- Gap between section headers and content: `sm` (8)
+- Gap between sections: `lg` (24)
+- Gap between list items / protocol rows: `sm` (8)
+- Bottom tab bar clearance: `xxl` (48)
+
+---
+
+## Border Radius
+
+```typescript
+export const radius = {
+  sm:   6,   // Chips, badges, small buttons
+  md:   10,  // Cards, inputs
+  lg:   14,  // Large cards, bottom sheets
+  full: 9999, // Circular buttons, avatars
+};
+```
+
+---
+
+## Component Patterns
+
+### Cards
+
+```tsx
+// Standard card — non-interactive
+<View style={{ backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border }}>
+  {children}
+</View>
+
+// Pressable card
+<Pressable style={({ pressed }) => ({ backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.75 : 1 })}>
+  {children}
+</Pressable>
+```
+
+### Protocol Row
+
+```tsx
+// Protocol item inside Protocols section
+// - Left: circular checkbox (empty = border only, done = accent fill + checkmark)
+// - Center: title + metadata (time, tier)
+// - Right: kebab menu (3 dots)
+// Completed state: title in textSecondary, checkbox in accent color
+```
+
+### Section Header
+
+```tsx
+// All section labels follow this pattern
+<View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
+  <Text style={[typography.micro, { color: colors.textSecondary }]}>SECTION TITLE</Text>
+  <Pressable><Text style={[typography.caption, { color: colors.accent }]}>Action</Text></Pressable>
+</View>
+```
+
+### Tier Divider
+
+```tsx
+// Tier label inside protocol list (NON-NEGOTIABLE, GROWTH, ROTATING FOCUS)
+<View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginVertical: spacing.sm }}>
+  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.tierNonNeg }} />
+  <Text style={[typography.micro, { color: colors.textMuted }]}>NON-NEGOTIABLE</Text>
+</View>
+```
+
+### Primary Button
+
+```tsx
+<Pressable style={{ backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: spacing.sm + 4, alignItems: 'center' }}>
+  <Text style={{ color: '#000', fontWeight: fontWeights.semibold, fontSize: 15 }}>Label</Text>
+</Pressable>
+```
+
+### Momentum Index Card
+
+```tsx
+// Top card on STATUS tab
+// - Large score number in systemScore style
+// - Delta (+1.2%) in accent color if positive, red if negative
+// - Circular gauge ring in indexBlue
+// - "LAST COMPUTED" and "DELTA" metadata in micro style, textMuted
+// - Score label (LOCKED IN / BUILDING / DRIFTING / OFF TRACK) in caption style
+```
+
+Score label thresholds:
+- 80–100 → `LOCKED IN` (accent color)
+- 60–79 → `BUILDING` (indexBlue)
+- 40–59 → `DRIFTING` (amber `#F59E0B`)
+- 0–39 → `OFF TRACK` (red `#EF4444`)
+
+### Mission Briefing Card
+
+```tsx
+// Dark card, slightly different from standard card
+// Header row: "AI GENERATED • TODAY" in micro style (cyan #06B6D4)
+// Title: bold, textPrimary, ~17px
+// Body: body style, textSecondary
+// Priority List: bullet-style list items in caption style
+// Two action buttons at bottom: "Contextual Chat" (ghost) + "Start Day" (filled blue)
+```
+
+### Bottom Navigation
+
+5 tabs: Mission | Plan | + (FAB center) | Chat | Menu
+
+- Active tab: accent color icon + label
+- Inactive: textMuted icon + label
+- Center FAB: large `+` button in accent color with circular background
+- Tab labels: `micro` typography
+
+### Coaching Style Cards (Onboarding)
+
+```tsx
+// Each coaching style (DIRECT / STRATEGIC / DRIVEN) is a pressable card
+// Selected: border in that style's accent color, subtle accent background tint
+// Icon in style accent color, label in bold, description in textSecondary
+// "TONE PREVIEW" section inside: small blockquote example in textMuted
+```
+
+### Calibration Sliders
+
+```tsx
+// Each metric has a colored gradient track
+// Thumb is white circle with shadow
+// Value displayed prominently on the right (large number, bold)
+// Label above with icon (colored per metric) + description below in caption/textMuted
+// Scale labels at ends (e.g., "1 — POOR" → "5 — AVG" → "10 — EXCELLENT")
+```
+
+### Execution Calendar (LOG Tab)
+
+```tsx
+// Month grid
+// Each cell background color:
+//   All complete → dark emerald tint
+//   Partial      → amber/dark gold tint
+//   Missed       → dark crimson tint
+//   No data      → colors.card
+//   Today        → indexBlue (bright blue highlight)
+// Small dots below date number indicate protocol count
+// Legend block at bottom explains color coding
+```
+
+---
+
+## NativeWind Usage
+
+This project uses **NativeWind v4** with Tailwind CSS.
+
+- Prefer NativeWind class strings for layout and spacing
+- Use `lib/theme.ts` color tokens via `style={{ color: colors.accent }}` for semantic colors (do not hardcode Tailwind color classes for brand colors)
+- Custom colors should be extended in `tailwind.config.js` to match theme tokens
+- Use `className` for spacing/layout; use `style` for dynamic/programmatic values
+
+```tsx
+// ✅ GOOD
+<View className="flex-1 px-4 gap-2" style={{ backgroundColor: colors.card }}>
+
+// ❌ BAD — hardcoded hex
+<View style={{ backgroundColor: '#111113', paddingHorizontal: 16 }}>
+```
+
+---
+
+## Animation & Interaction
+
+- Use `react-native-reanimated` for any animated values — not `Animated` from React Native core
+- Haptic feedback on all primary interactions: `Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)`
+- Protocol check-off: `Medium` haptics
+- Avoid bounce/spring animations — prefer `timing` with `Easing.out(Easing.ease)`
+- No confetti, celebration particles, or reward animations
+
+---
+
+## What to Avoid
+
+- ❌ Rounded pill buttons for primary CTAs (use `radius.md` = 10, not full pill)
+- ❌ Light mode — this is dark-only
+- ❌ Emojis in any UI text (including AI-generated content)
+- ❌ Words: "habit", "task", "goal", "journal", "diary", "chatbot", "assistant", "score"
+- ✅ Use instead: "Protocol", "Execution", "Signal Log", "System", "Momentum Index"
+- ❌ Success toasts with "Great job!" — use clinical confirmations ("Execution logged.")
+- ❌ Gradient backgrounds on screens — surfaces are flat dark, gradients only on buttons/progress elements
+- ❌ Illustrations, icons with personality, mascots
+
+---
+
+## Figma Reference
+
+Source file: [Momentum Figma](https://www.figma.com/design/tXUJM1jDqssn1EZhklusXo/Momentum?node-id=0-1)
+
+Key frames to reference:
+- **V2 Hub UI** — STATUS tab (home screen) final design
+- **Execution Calendar** — LOG tab monthly grid with color-coded cells
+- **Onboarding Step 1–5** — Identity, Coaching Style, Daily Commitment, Initial Calibration
+- **Initial Calibration** — Gradient sliders + Momentum Index baseline preview
