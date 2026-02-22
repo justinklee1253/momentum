@@ -15,7 +15,36 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, message } = await req.json();
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Missing authorization' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const supabaseAuth = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(
+      authHeader.replace(/^Bearer\s+/i, '')
+    );
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { userId, message, sessionId } = await req.json();
+    if (user.id !== userId) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -27,7 +56,9 @@ serve(async (req) => {
       supabase.from('onboarding_profiles').select('identity_statement, ideal_day').eq('user_id', userId).single(),
       supabase.from('ai_personality_profiles').select('coaching_style, tone_settings').eq('user_id', userId).single(),
       supabase.from('journals').select('content, date, mood, tags').eq('user_id', userId).order('created_at', { ascending: false }).limit(4),
-      supabase.from('ai_conversations').select('role, content').eq('user_id', userId).order('created_at', { ascending: false }).limit(10),
+      sessionId
+        ? supabase.from('ai_conversations').select('role, content').eq('session_id', sessionId).order('created_at', { ascending: false }).limit(10)
+        : supabase.from('ai_conversations').select('role, content').eq('user_id', userId).order('created_at', { ascending: false }).limit(10),
       supabase.from('metrics_snapshots').select('momentum_score, consistency_rate').eq('user_id', userId).order('date', { ascending: false }).limit(1),
     ]);
 
@@ -40,7 +71,7 @@ serve(async (req) => {
     const consistency = metricsRes.data?.[0]?.consistency_rate ?? 0;
 
     const journalContext = journals
-      .map((j: any) => `[${j.date}] Clarity: ${j.mood ?? 'N/A'}/10\n${j.content.slice(0, 300)}`)
+      .map((j: any) => `[${j.date}] Clarity: ${j.mood ?? 'N/A'}/10\n${(j.content ?? '').slice(0, 300)}`)
       .join('\n\n');
 
     const modeInstructions: Record<string, string> = {
@@ -90,11 +121,11 @@ MODE: ${modeInstructions[coachingStyle] ?? modeInstructions.DIRECT}`;
 
     const aiContent = completion.choices[0]?.message?.content ?? 'System unavailable.';
 
-    // Store AI response
     await supabase.from('ai_conversations').insert({
       user_id: userId,
       role: 'AI',
       content: aiContent,
+      ...(sessionId ? { session_id: sessionId } : {}),
     });
 
     return new Response(JSON.stringify({ content: aiContent }), {

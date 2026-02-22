@@ -270,10 +270,28 @@ export interface Database {
           habit_health_scores?: Json | null;
         };
       };
+      chat_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          title?: string;
+        };
+        Update: {
+          title?: string;
+          updated_at?: string;
+        };
+      };
       ai_conversations: {
         Row: {
           id: string;
           user_id: string;
+          session_id: string | null;
           role: 'USER' | 'AI';
           content: string;
           metadata: Json | null;
@@ -281,6 +299,7 @@ export interface Database {
         };
         Insert: {
           user_id: string;
+          session_id?: string | null;
           role: 'USER' | 'AI';
           content: string;
           metadata?: Json | null;
@@ -363,4 +382,5 @@ export type Journal = Database['public']['Tables']['journals']['Row'];
 export type Workout = Database['public']['Tables']['workouts']['Row'];
 export type MetricsSnapshot = Database['public']['Tables']['metrics_snapshots']['Row'];
 export type AIConversation = Database['public']['Tables']['ai_conversations']['Row'];
+export type ChatSession = Database['public']['Tables']['chat_sessions']['Row'];
 export type DailyGreeting = Database['public']['Tables']['daily_greetings']['Row'];

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,10 @@ import {
   Pressable,
   TextInput,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
@@ -20,9 +21,14 @@ import { colors, typography, spacing, radius, fontWeights } from '../../lib/them
 import { useSystem } from '../../hooks/useSystem';
 import { useUserId } from '../../hooks/useUserId';
 import { useMetrics } from '../../hooks/useMetrics';
+import { useChatSessions } from '../../hooks/useChatSessions';
+import { useChatStore } from '../../stores/chatStore';
+import { ChatSidebar } from '../../components/chat/ChatSidebar';
 import { supabase } from '../../lib/supabase';
 import { AIConversation } from '../../lib/database.types';
 import { CoachingStyle, COACHING_STYLE_LABELS } from '../../lib/constants';
+
+/* ─── SVG Icons ─── */
 
 function BoltIcon() {
   return (
@@ -46,12 +52,14 @@ function BoltIconLarge() {
   );
 }
 
-function HistoryIcon() {
+function HamburgerIcon() {
   return (
-    <Svg width={14} height={14} viewBox="0 0 14 14" fill="none">
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
       <Path
-        d="M2.05078 2.05078L1.12109 1.12109C0.708203 0.708203 0 1.00078 0 1.5832V4.59375C0 4.95742 0.292578 5.25 0.65625 5.25H3.6668C4.25195 5.25 4.54453 4.5418 4.13164 4.12891L3.28945 3.28672C4.23828 2.33789 5.55078 1.75 7 1.75C9.89844 1.75 12.25 4.10156 12.25 7C12.25 9.89844 9.89844 12.25 7 12.25C5.88437 12.25 4.85078 11.9027 4.00039 11.3094C3.60391 11.0332 3.05977 11.1289 2.78086 11.5254C2.50195 11.9219 2.60039 12.466 2.99688 12.7449C4.13438 13.5352 5.51523 14 7 14C10.8664 14 14 10.8664 14 7C14 3.13359 10.8664 0 7 0C5.0668 0 3.3168 0.784766 2.05078 2.05078V2.05078M7 3.5C6.63633 3.5 6.34375 3.79258 6.34375 4.15625V7C6.34375 7.175 6.41211 7.3418 6.53516 7.46484L8.50391 9.43359C8.76094 9.69063 9.17656 9.69063 9.43086 9.43359C9.68516 9.17655 9.68789 8.76094 9.43086 8.50664L7.65352 6.7293V4.15625C7.65352 3.79258 7.36094 3.5 6.99727 3.5H7"
-        fill="#A1A1AA"
+        d="M3 6h18M3 12h18M3 18h18"
+        stroke={colors.textSecondary}
+        strokeWidth={1.8}
+        strokeLinecap="round"
       />
     </Svg>
   );
@@ -155,13 +163,33 @@ function getModeColor(mode: CoachingStyle): string {
   }
 }
 
-function Header({ score, coachingStyle }: { score: number; coachingStyle: CoachingStyle }) {
+/* ─── Header ─── */
+
+function Header({
+  score,
+  coachingStyle,
+  onMenuPress,
+}: {
+  score: number;
+  coachingStyle: CoachingStyle;
+  onMenuPress: () => void;
+}) {
   const insets = useSafeAreaInsets();
   const modeColor = getModeColor(coachingStyle);
 
   return (
     <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
       <View style={styles.headerLeft}>
+        <Pressable
+          style={styles.menuBtn}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            onMenuPress();
+          }}
+          hitSlop={8}
+        >
+          <HamburgerIcon />
+        </Pressable>
         <LinearGradient
           colors={['#3B82F6', '#9333EA']}
           start={{ x: 0, y: 0 }}
@@ -183,12 +211,6 @@ function Header({ score, coachingStyle }: { score: number; coachingStyle: Coachi
 
       <View style={styles.headerRight}>
         <Pressable
-          style={styles.iconBtn}
-          onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-        >
-          <HistoryIcon />
-        </Pressable>
-        <Pressable
           style={styles.avatarWrap}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -207,6 +229,8 @@ function Header({ score, coachingStyle }: { score: number; coachingStyle: Coachi
   );
 }
 
+/* ─── Message Bubble ─── */
+
 function MessageBubble({ message }: { message: AIConversation }) {
   const isUser = message.role === 'USER';
   return (
@@ -224,18 +248,102 @@ function MessageBubble({ message }: { message: AIConversation }) {
   );
 }
 
+/* ─── Input Row ─── */
+
+function InputRow({
+  input,
+  setInput,
+  onSend,
+  isSending,
+  style,
+}: {
+  input: string;
+  setInput: (v: string) => void;
+  onSend: () => void;
+  isSending: boolean;
+  style?: object;
+}) {
+  return (
+    <View style={[styles.inputRow, style]}>
+      <View style={styles.circleBtn}>
+        <Pressable
+          style={styles.circleBtnPress}
+          onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+        >
+          <PlusIcon />
+        </Pressable>
+      </View>
+
+      <View style={styles.inputWrap}>
+        <TextInput
+          value={input}
+          onChangeText={setInput}
+          placeholder="Ask anything..."
+          placeholderTextColor="#71717A"
+          style={styles.textInput}
+          multiline
+          maxLength={500}
+          onSubmitEditing={onSend}
+        />
+        <Pressable style={styles.inputTrailing}>
+          <MicIcon />
+        </Pressable>
+      </View>
+
+      <View style={styles.sendBtn}>
+        <Pressable
+          onPress={onSend}
+          disabled={isSending}
+          style={styles.circleBtnPress}
+        >
+          {isSending ? (
+            <ActivityIndicator size="small" color="#000" />
+          ) : (
+            <HeadphoneIcon />
+          )}
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+/* ─── Suggestions ─── */
+
 const SUGGESTIONS = [
   { id: 'plan', label: 'Plan day', icon: PlanDayIcon },
   { id: 'logs', label: 'Review logs', icon: ReviewLogsIcon },
   { id: 'reflect', label: 'Reflect', icon: ReflectIcon },
 ] as const;
 
+/* ─── Main Chat Tab ─── */
+
 export default function ChatTab() {
   const userId = useUserId();
   const metrics = useMetrics(userId);
-  const { data: messages, isLoading, sendMessage, isSending } = useSystem(userId);
+  const navigation = useNavigation();
+
+  const {
+    activeSessionId,
+    setActiveSessionId,
+    sidebarOpen,
+    setSidebarOpen,
+    toggleSidebar,
+  } = useChatStore();
+
+  const { sessions, createSession, deleteSession } = useChatSessions(userId);
+  const { data: messages, isLoading, sendMessage, seedAndSend, isSending } = useSystem(userId, activeSessionId);
+
   const [input, setInput] = useState('');
   const flatListRef = useRef<FlatList>(null);
+
+  // Reset to empty state every time the tab gains focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      setActiveSessionId(null);
+      setSidebarOpen(false);
+    });
+    return unsubscribe;
+  }, [navigation, setActiveSessionId, setSidebarOpen]);
 
   const { data: profile } = useQuery({
     queryKey: ['ai_personality', userId],
@@ -251,19 +359,46 @@ export default function ChatTab() {
   });
   const coachingStyle = profile?.coaching_style ?? CoachingStyle.DIRECT;
 
-  async function handleSend() {
+  const handleSend = useCallback(async () => {
     const text = input.trim();
     if (!text || isSending) return;
     setInput('');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     try {
-      await sendMessage(text);
+      let sessionId = activeSessionId;
+
+      if (!sessionId) {
+        const session = await createSession(text);
+        sessionId = session.id;
+
+        const promise = seedAndSend(text, sessionId);
+        setActiveSessionId(sessionId);
+
+        await promise;
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+        return;
+      }
+
+      await sendMessage(text, sessionId);
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-    } catch {
-      // Error handled by mutation
+    } catch (e) {
+      console.error('Chat send error:', e);
+      const isAuthError =
+        (e instanceof Error && e.message?.includes('Session expired')) ||
+        (e && typeof e === 'object' && 'context' in e && (e as { context?: { status?: number } }).context?.status === 401);
+
+      if (isAuthError) {
+        await supabase.auth.signOut();
+        Alert.alert('Session expired', 'Sign in again to continue.', [
+          { text: 'OK', onPress: () => router.replace('/(auth)/login') },
+        ]);
+        return;
+      }
+
+      Alert.alert('Send failed', 'Try again.', [{ text: 'OK' }]);
     }
-  }
+  }, [input, isSending, activeSessionId, createSession, setActiveSessionId, sendMessage, seedAndSend]);
 
   function onSuggestion(id: string, label: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -278,24 +413,70 @@ export default function ChatTab() {
     setInput(label);
   }
 
-  const hasMessages = messages && messages.length > 0;
+  const handleSelectSession = useCallback((id: string) => {
+    setActiveSessionId(id);
+    setSidebarOpen(false);
+  }, [setActiveSessionId, setSidebarOpen]);
+
+  const handleNewChat = useCallback(() => {
+    setActiveSessionId(null);
+    setSidebarOpen(false);
+  }, [setActiveSessionId, setSidebarOpen]);
+
+  const handleDeleteSession = useCallback(async (id: string) => {
+    Alert.alert(
+      'Delete conversation',
+      'This will permanently remove this conversation.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteSession(id);
+            if (activeSessionId === id) {
+              setActiveSessionId(null);
+            }
+          },
+        },
+      ],
+    );
+  }, [deleteSession, activeSessionId, setActiveSessionId]);
+
+  const hasMessages = activeSessionId && messages && messages.length > 0;
 
   return (
     <View style={styles.container}>
-      <Header score={metrics.data?.momentumScore ?? 0} coachingStyle={coachingStyle} />
+      {/* Sidebar */}
+      <ChatSidebar
+        open={sidebarOpen}
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        onSelectSession={handleSelectSession}
+        onNewChat={handleNewChat}
+        onDeleteSession={handleDeleteSession}
+        onClose={() => setSidebarOpen(false)}
+      />
+
+      {/* Header */}
+      <Header
+        score={metrics.data?.momentumScore ?? 0}
+        coachingStyle={coachingStyle}
+        onMenuPress={toggleSidebar}
+      />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flex}
         keyboardVerticalOffset={0}
       >
-        {isLoading ? (
+        {activeSessionId && isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator color={colors.accent} />
           </View>
         ) : !hasMessages ? (
+          /* ─── Empty / Default State ─── */
           <View style={styles.flex}>
-            {/* Centered hero */}
             <View style={styles.heroArea}>
               <View style={styles.emptyIconCard}>
                 <BoltIconLarge />
@@ -303,7 +484,6 @@ export default function ChatTab() {
               <Text style={styles.emptyTitle}>How can I help you today?</Text>
             </View>
 
-            {/* Bottom-pinned: pills + input */}
             <View style={styles.bottomArea}>
               <View style={styles.pillRow}>
                 {SUGGESTIONS.map(({ id, label, icon: Icon }) => (
@@ -320,49 +500,16 @@ export default function ChatTab() {
                 ))}
               </View>
 
-              <View style={styles.inputRow}>
-                <View style={styles.circleBtn}>
-                  <Pressable
-                    style={styles.circleBtnPress}
-                    onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-                  >
-                    <PlusIcon />
-                  </Pressable>
-                </View>
-
-                <View style={styles.inputWrap}>
-                  <TextInput
-                    value={input}
-                    onChangeText={setInput}
-                    placeholder="Ask anything..."
-                    placeholderTextColor="#71717A"
-                    style={styles.textInput}
-                    multiline
-                    maxLength={500}
-                    onSubmitEditing={handleSend}
-                  />
-                  <Pressable style={styles.inputTrailing}>
-                    <MicIcon />
-                  </Pressable>
-                </View>
-
-                <View style={styles.sendBtn}>
-                  <Pressable
-                    onPress={handleSend}
-                    disabled={isSending}
-                    style={styles.circleBtnPress}
-                  >
-                    {isSending ? (
-                      <ActivityIndicator size="small" color="#000" />
-                    ) : (
-                      <HeadphoneIcon />
-                    )}
-                  </Pressable>
-                </View>
-              </View>
+              <InputRow
+                input={input}
+                setInput={setInput}
+                onSend={handleSend}
+                isSending={isSending}
+              />
             </View>
           </View>
         ) : (
+          /* ─── Conversation View ─── */
           <View style={styles.flex}>
             <FlatList
               ref={flatListRef}
@@ -381,52 +528,21 @@ export default function ChatTab() {
               }
             />
 
-            <View style={styles.inputRowMessages}>
-              <View style={styles.circleBtn}>
-                <Pressable
-                  style={styles.circleBtnPress}
-                  onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-                >
-                  <PlusIcon />
-                </Pressable>
-              </View>
-
-              <View style={styles.inputWrap}>
-                <TextInput
-                  value={input}
-                  onChangeText={setInput}
-                  placeholder="Ask anything..."
-                  placeholderTextColor="#71717A"
-                  style={styles.textInput}
-                  multiline
-                  maxLength={500}
-                  onSubmitEditing={handleSend}
-                />
-                <Pressable style={styles.inputTrailing}>
-                  <MicIcon />
-                </Pressable>
-              </View>
-
-              <View style={styles.sendBtn}>
-                <Pressable
-                  onPress={handleSend}
-                  disabled={isSending}
-                  style={styles.circleBtnPress}
-                >
-                  {isSending ? (
-                    <ActivityIndicator size="small" color="#000" />
-                  ) : (
-                    <HeadphoneIcon />
-                  )}
-                </Pressable>
-              </View>
-            </View>
+            <InputRow
+              input={input}
+              setInput={setInput}
+              onSend={handleSend}
+              isSending={isSending}
+              style={styles.inputRowMessages}
+            />
           </View>
         )}
       </KeyboardAvoidingView>
     </View>
   );
 }
+
+/* ─── Styles ─── */
 
 const styles = StyleSheet.create({
   container: {
@@ -450,6 +566,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  menuBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.input,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logoGradient: {
     width: 36,
@@ -490,16 +616,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-  },
-  iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.input,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   avatarWrap: {
     position: 'relative',
@@ -666,9 +782,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   inputRowMessages: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     paddingBottom: 80,

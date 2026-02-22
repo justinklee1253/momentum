@@ -12,6 +12,7 @@ interface AuthState {
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null; needsConfirmation?: boolean }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
+  updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>;
 }
 
 export function useAuth(): AuthState {
@@ -77,9 +78,23 @@ export function useAuth(): AuthState {
 
   async function resetPassword(email: string) {
     try {
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+      const redirectTo =
+        supabaseUrl.startsWith('https://')
+          ? `${supabaseUrl}/functions/v1/auth-redirect`
+          : 'momentum://reset-password';
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'momentum://reset-password',
+        redirectTo,
       });
+      return { error };
+    } catch (e) {
+      return { error: e as AuthError };
+    }
+  }
+
+  async function updatePassword(newPassword: string) {
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
       return { error };
     } catch (e) {
       return { error: e as AuthError };
@@ -95,5 +110,6 @@ export function useAuth(): AuthState {
     signUp,
     signOut,
     resetPassword,
+    updatePassword,
   };
 }
