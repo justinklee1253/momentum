@@ -27,13 +27,24 @@ credentials.json
 .DS_Store
 Thumbs.db
 
+# IDE / editor
+.vscode/
+.cursor/
+*.plan.md
+
+# Lock files
+package-lock.json
+
+# Supabase local state & config
+supabase/.temp/
+supabase/config.toml
+
+# Database migrations (applied via CLI, not committed)
+supabase/migrations/
+
 # Project docs (local-only)
 MOMENTUM_CONTEXT_PACK.md
 supabase/DATABASE.md
-
-# Cursor (editor/IDE)
-.cursor/
-*.plan.md
 
 # Logs
 npm-debug.log*

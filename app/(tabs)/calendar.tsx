@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   View,
   Text,
@@ -127,7 +128,13 @@ function Header({ score }: { score: number }) {
 
   return (
     <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-      <View style={styles.headerLeft}>
+      <Pressable
+        style={styles.headerLeft}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          router.navigate('/(tabs)/');
+        }}
+      >
         <LinearGradient
           colors={['#3B82F6', '#9333EA']}
           start={{ x: 0, y: 0 }}
@@ -143,7 +150,7 @@ function Header({ score }: { score: number }) {
             <Text style={styles.statusText}>SYSTEM ACTIVE</Text>
           </View>
         </View>
-      </View>
+      </Pressable>
 
       <View style={styles.headerRight}>
         <Pressable
@@ -226,9 +233,10 @@ function computeGridDays(
           status = 'complete';
         } else if (atLeastOneDoneOrPartial) {
           status = 'partial';
-        } else {
+        } else if (!isToday) {
           status = 'missed';
         }
+        // Today with 0 protocols done: status remains 'today' (blue)
       }
     }
 
@@ -363,6 +371,7 @@ function DayCell({ data }: { data: DayData }) {
 
 export default function CalendarTab() {
   const userId = useUserId();
+  const queryClient = useQueryClient();
   const metrics = useMetrics(userId);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [lastClickedSegment, setLastClickedSegment] = useState<
@@ -391,13 +400,14 @@ export default function CalendarTab() {
 
   useFocusEffect(
     useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: ['calendar', userId] });
       const target = calendarViewStore.getState().targetDate;
       if (target) {
         setCurrentDate(new Date(target.getFullYear(), target.getMonth(), 1));
         setLastClickedSegment('filter');
         calendarViewStore.getState().setTargetDate(null);
       }
-    }, [])
+    }, [queryClient, userId])
   );
 
   function openDatePicker() {

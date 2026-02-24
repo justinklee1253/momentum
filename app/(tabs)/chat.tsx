@@ -10,6 +10,8 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Animated,
+  Easing,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useNavigation } from 'expo-router';
@@ -168,11 +170,9 @@ function getModeColor(mode: CoachingStyle): string {
 function Header({
   score,
   coachingStyle,
-  onMenuPress,
 }: {
   score: number;
   coachingStyle: CoachingStyle;
-  onMenuPress: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const modeColor = getModeColor(coachingStyle);
@@ -181,32 +181,30 @@ function Header({
     <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
       <View style={styles.headerLeft}>
         <Pressable
-          style={styles.menuBtn}
+          style={styles.logoPress}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            onMenuPress();
+            router.navigate('/(tabs)/');
           }}
-          hitSlop={8}
         >
-          <HamburgerIcon />
-        </Pressable>
-        <LinearGradient
-          colors={['#3B82F6', '#9333EA']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.logoGradient}
-        >
-          <BoltIcon />
-        </LinearGradient>
-        <View>
-          <Text style={styles.logoText}>MOMENTUM</Text>
-          <View style={styles.statusRow}>
-            <View style={[styles.statusDot, { backgroundColor: modeColor }]} />
-            <Text style={styles.modeText}>
-              MODE: {COACHING_STYLE_LABELS[coachingStyle]}
-            </Text>
+          <LinearGradient
+            colors={['#3B82F6', '#9333EA']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.logoGradient}
+          >
+            <BoltIcon />
+          </LinearGradient>
+          <View>
+            <Text style={styles.logoText}>MOMENTUM</Text>
+            <View style={styles.statusRow}>
+              <View style={[styles.statusDot, { backgroundColor: modeColor }]} />
+              <Text style={styles.modeText}>
+                MODE: {COACHING_STYLE_LABELS[coachingStyle]}
+              </Text>
+            </View>
           </View>
-        </View>
+        </Pressable>
       </View>
 
       <View style={styles.headerRight}>
@@ -232,9 +230,31 @@ function Header({
 /* ─── Message Bubble ─── */
 
 function MessageBubble({ message }: { message: AIConversation }) {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 220,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
   const isUser = message.role === 'USER';
   return (
-    <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAI]}>
+    <Animated.View
+      style={[
+        styles.bubble,
+        isUser ? styles.bubbleUser : styles.bubbleAI,
+        {
+          opacity: anim,
+          transform: [
+            { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) },
+          ],
+        },
+      ]}
+    >
       {!isUser && (
         <Text style={styles.roleLabel}>SYSTEM</Text>
       )}
@@ -244,6 +264,47 @@ function MessageBubble({ message }: { message: AIConversation }) {
       <Text style={styles.timestamp}>
         {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
       </Text>
+    </Animated.View>
+  );
+}
+
+/* ─── Thinking Indicator ─── */
+
+function ThinkingIndicator() {
+  const dot1 = useRef(new Animated.Value(0.25)).current;
+  const dot2 = useRef(new Animated.Value(0.25)).current;
+  const dot3 = useRef(new Animated.Value(0.25)).current;
+
+  useEffect(() => {
+    const makeDotAnim = (val: Animated.Value, delay: number) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(val, { toValue: 1, duration: 300, useNativeDriver: true }),
+          Animated.timing(val, { toValue: 0.25, duration: 300, useNativeDriver: true }),
+          Animated.delay(Math.max(0, 900 - delay)),
+        ])
+      );
+
+    const a1 = makeDotAnim(dot1, 0);
+    const a2 = makeDotAnim(dot2, 200);
+    const a3 = makeDotAnim(dot3, 400);
+
+    a1.start();
+    a2.start();
+    a3.start();
+
+    return () => { a1.stop(); a2.stop(); a3.stop(); };
+  }, []);
+
+  return (
+    <View style={[styles.bubble, styles.bubbleAI, styles.thinkingBubble]}>
+      <Text style={styles.roleLabel}>SYSTEM</Text>
+      <View style={{ flexDirection: 'row', gap: 5, paddingVertical: 2 }}>
+        {([dot1, dot2, dot3] as Animated.Value[]).map((opacity, i) => (
+          <Animated.View key={i} style={[styles.thinkingDot, { opacity }]} />
+        ))}
+      </View>
     </View>
   );
 }
@@ -335,6 +396,7 @@ export default function ChatTab() {
 
   const [input, setInput] = useState('');
   const flatListRef = useRef<FlatList>(null);
+  const isNearBottomRef = useRef(true);
 
   // Reset to empty state every time the tab gains focus
   useEffect(() => {
@@ -384,9 +446,7 @@ export default function ChatTab() {
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (e) {
       console.error('Chat send error:', e);
-      const isAuthError =
-        (e instanceof Error && e.message?.includes('Session expired')) ||
-        (e && typeof e === 'object' && 'context' in e && (e as { context?: { status?: number } }).context?.status === 401);
+      const isAuthError = e instanceof Error && e.message?.includes('Session expired');
 
       if (isAuthError) {
         await supabase.auth.signOut();
@@ -462,8 +522,21 @@ export default function ChatTab() {
       <Header
         score={metrics.data?.momentumScore ?? 0}
         coachingStyle={coachingStyle}
-        onMenuPress={toggleSidebar}
       />
+
+      {/* Detached hamburger — sits below header, above content */}
+      <View style={styles.menuRow}>
+        <Pressable
+          style={styles.menuBtn}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            toggleSidebar();
+          }}
+          hitSlop={8}
+        >
+          <HamburgerIcon />
+        </Pressable>
+      </View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -518,14 +591,18 @@ export default function ChatTab() {
               renderItem={({ item }) => <MessageBubble message={item} />}
               contentContainerStyle={styles.messageList}
               showsVerticalScrollIndicator={false}
-              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-              ListFooterComponent={
-                isSending ? (
-                  <View style={styles.typingIndicator}>
-                    <Text style={styles.typingText}>SYSTEM PROCESSING...</Text>
-                  </View>
-                ) : null
-              }
+              scrollEventThrottle={100}
+              onScroll={(e) => {
+                const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+                isNearBottomRef.current =
+                  contentOffset.y + layoutMeasurement.height >= contentSize.height - 150;
+              }}
+              onContentSizeChange={() => {
+                if (isNearBottomRef.current) {
+                  flatListRef.current?.scrollToEnd({ animated: true });
+                }
+              }}
+              ListFooterComponent={isSending ? <ThinkingIndicator /> : null}
             />
 
             <InputRow
@@ -567,6 +644,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  menuRow: {
+    paddingHorizontal: 17,
+    paddingVertical: 8,
+  },
   menuBtn: {
     width: 36,
     height: 36,
@@ -576,6 +657,11 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  logoPress: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   logoGradient: {
     width: 36,
@@ -766,14 +852,18 @@ const styles = StyleSheet.create({
     fontSize: 11,
     alignSelf: 'flex-end',
   },
-  typingIndicator: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+  thinkingBubble: {
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 4,
   },
-  typingText: {
-    ...typography.micro,
-    color: colors.textMuted,
-    letterSpacing: 1,
+  thinkingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.accent,
   },
   inputRow: {
     flexDirection: 'row',

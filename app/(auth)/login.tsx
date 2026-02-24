@@ -90,7 +90,12 @@ export default function LoginScreen() {
       const { error } = await signIn(email.trim(), password);
       if (error) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert('Authentication failed', error.message);
+        const message = error.message.toLowerCase().includes('email not confirmed')
+          ? 'Please verify your email before logging in. Check your inbox for a confirmation link.'
+          : error.message;
+        Alert.alert('Authentication failed', message);
+      } else {
+        router.replace('/');
       }
     } catch {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

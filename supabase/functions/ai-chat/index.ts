@@ -23,12 +23,11 @@ serve(async (req) => {
       });
     }
 
-    const supabaseAuth = createClient(
+    const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
-    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(
+    const { data: { user }, error: userError } = await supabase.auth.getUser(
       authHeader.replace(/^Bearer\s+/i, '')
     );
     if (userError || !user) {
@@ -45,11 +44,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
 
     // Fetch context in parallel
     const [profileRes, personalityRes, journalsRes, conversationsRes, metricsRes] = await Promise.all([

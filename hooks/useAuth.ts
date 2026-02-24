@@ -42,7 +42,13 @@ export function useAuth(): AuthState {
   async function fetchProfile(userId: string) {
     try {
       const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
-      setProfile(data);
+      if (data) {
+        setProfile(data);
+      } else {
+        // No profile found — session is stale (e.g. user was deleted from dashboard).
+        // Sign out to clear cached tokens so the user lands on the login screen.
+        await supabase.auth.signOut();
+      }
     } finally {
       setLoading(false);
     }

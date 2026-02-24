@@ -53,6 +53,23 @@ export function useSignalLog(userId: string | null) {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async (entry: { id: string; content: string; mood: number }) => {
+      const { data, error } = await supabase
+        .from('journals')
+        .update({ content: entry.content, mood: entry.mood })
+        .eq('id', entry.id)
+        .eq('user_id', userId!)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['signal-log', userId] });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (entryId: string) => {
       const { error } = await supabase
@@ -68,10 +85,16 @@ export function useSignalLog(userId: string | null) {
     },
   });
 
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const todayEntry = query.data?.find(e => e.date === today) ?? null;
+
   return {
     ...query,
+    todayEntry,
     createEntry: createMutation.mutateAsync,
     isCreating: createMutation.isPending,
+    updateEntry: updateMutation.mutateAsync,
+    isUpdating: updateMutation.isPending,
     deleteEntry: deleteMutation.mutateAsync,
     isDeletingId: deleteMutation.isPending ? (deleteMutation.variables as string) : null,
   };

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,21 +11,26 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import Svg, { Path } from "react-native-svg";
+import { format } from "date-fns";
 import { colors, typography, spacing, radius } from "../../lib/theme";
 import { SegmentedControl } from "../../components/ui/SegmentedControl";
 import { TextInput } from "../../components/ui/TextInput";
 import { useSignalLog } from "../../hooks/useSignalLog";
 import { useUserId } from "../../hooks/useUserId";
-import { JournalMode } from "../../lib/constants";
+import { JournalMode, LogStatus } from "../../lib/constants";
+import { supabase } from "../../lib/supabase";
 
 const MODE_LABELS = ["OPEN", "STRUCTURED", "SYSTEM"];
 
 export default function NewJournalScreen() {
   const userId = useUserId();
-  const { createEntry, isCreating } = useSignalLog(userId);
+  const { habitId } = useLocalSearchParams<{ habitId?: string }>();
+  const queryClient = useQueryClient();
+  const { todayEntry, createEntry, isCreating, updateEntry, isUpdating } = useSignalLog(userId);
 
   const [modeIndex, setModeIndex] = useState(0);
   const [clarity, setClarity] = useState(5);
@@ -33,6 +38,17 @@ export default function NewJournalScreen() {
   const [executedWell, setExecutedWell] = useState("");
   const [needsAdjustment, setNeedsAdjustment] = useState("");
   const [keyInsight, setKeyInsight] = useState("");
+
+  const isEditing = !!todayEntry;
+
+  // Pre-populate from existing entry (always load into OPEN mode)
+  useEffect(() => {
+    if (todayEntry) {
+      setOpenContent(todayEntry.content);
+      setClarity(todayEntry.mood ?? 5);
+      setModeIndex(0); // force OPEN mode for editing
+    }
+  }, [todayEntry?.id]);
 
   const mode =
     modeIndex === 0
@@ -49,6 +65,8 @@ export default function NewJournalScreen() {
           needsAdjustment.trim().length > 0 ||
           keyInsight.trim().length > 0
         : false;
+
+  const isSaving = isCreating || isUpdating;
 
   async function handleSave() {
     let content = "";
@@ -68,7 +86,24 @@ export default function NewJournalScreen() {
     if (!content) return;
 
     try {
-      await createEntry({ content, mood: clarity });
+      if (isEditing) {
+        await updateEntry({ id: todayEntry!.id, content, mood: clarity });
+      } else {
+        await createEntry({ content, mood: clarity });
+      }
+
+      // Mark the protocol as DONE in habit_logs
+      if (habitId && userId) {
+        const today = format(new Date(), 'yyyy-MM-dd');
+        await supabase.from('habit_logs').upsert(
+          { habit_id: habitId, user_id: userId, date: today, status: LogStatus.DONE },
+          { onConflict: 'habit_id,date' }
+        );
+        queryClient.invalidateQueries({ queryKey: ['protocols', userId] });
+        queryClient.invalidateQueries({ queryKey: ['metrics', userId] });
+        queryClient.invalidateQueries({ queryKey: ['calendar', userId] });
+      }
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (err: any) {
@@ -86,7 +121,7 @@ export default function NewJournalScreen() {
           <Pressable onPress={() => router.back()} style={styles.cancelBtn}>
             <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
-          <Text style={styles.title}>LOG SIGNAL</Text>
+          <Text style={styles.title}>{isEditing ? "EDIT SIGNAL" : "LOG SIGNAL"}</Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -95,14 +130,16 @@ export default function NewJournalScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Mode selector */}
-          <View style={styles.modeSection}>
-            <SegmentedControl
-              options={MODE_LABELS}
-              selectedIndex={modeIndex}
-              onChange={setModeIndex}
-            />
-          </View>
+          {/* Mode selector — only shown when creating */}
+          {!isEditing && (
+            <View style={styles.modeSection}>
+              <SegmentedControl
+                options={MODE_LABELS}
+                selectedIndex={modeIndex}
+                onChange={setModeIndex}
+              />
+            </View>
+          )}
 
           {/* OPEN mode */}
           {mode === JournalMode.OPEN && (
@@ -214,9 +251,9 @@ export default function NewJournalScreen() {
 
           {mode !== JournalMode.SYSTEM && (
             <View style={styles.deployBtnWrap}>
-              <Pressable onPress={handleSave} disabled={!canSave || isCreating}>
+              <Pressable onPress={handleSave} disabled={!canSave || isSaving}>
                 <View style={styles.deployBtn}>
-                  {isCreating ? (
+                  {isSaving ? (
                     <ActivityIndicator
                       size="small"
                       color={colors.signalOrange}

@@ -67,7 +67,7 @@ export function useCalendarData(userId: string | null, year: number, month: numb
         const cells: Record<number, CalendarCell> = {};
         let doneCount = 0;
         let applicableDays = 0;
-        const habitCreatedDate = habit.created_at.split('T')[0];
+        const habitCreatedDate = format(new Date(habit.created_at), 'yyyy-MM-dd');
 
         for (let day = 1; day <= numDays; day++) {
           const dateStr = format(new Date(year, month - 1, day), 'yyyy-MM-dd');
@@ -92,7 +92,7 @@ export function useCalendarData(userId: string | null, year: number, month: numb
       let totalCells = 0;
       let doneCells = 0;
       habits.forEach((habit) => {
-        const createdDate = habit.created_at.split('T')[0];
+        const createdDate = format(new Date(habit.created_at), 'yyyy-MM-dd');
         for (let day = 1; day <= numDays; day++) {
           const dateStr = format(new Date(year, month - 1, day), 'yyyy-MM-dd');
           if (dateStr >= createdDate && scheduleApplies(habit, dateStr)) {
@@ -106,7 +106,7 @@ export function useCalendarData(userId: string | null, year: number, month: numb
 
       let bestConsecutive = 0;
       habits.forEach((habit) => {
-        const createdDate = habit.created_at.split('T')[0];
+        const createdDate = format(new Date(habit.created_at), 'yyyy-MM-dd');
         let streak = 0;
         let best = 0;
         for (let day = numDays; day >= 1; day--) {

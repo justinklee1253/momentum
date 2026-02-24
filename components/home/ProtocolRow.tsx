@@ -48,7 +48,7 @@ export function ProtocolRow({ protocol, onToggle, isToggling, onKebabPress }: Pr
   function handleCheckboxPress() {
     if (protocol.type === HabitType.JOURNAL) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      router.push('/journal/new');
+      router.push({ pathname: '/journal/new', params: { habitId: protocol.id } });
       return;
     }
     if (protocol.type === HabitType.WORKOUT) {

@@ -9,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
+  Modal,
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -97,6 +98,7 @@ export default function SignupScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const ruleResults = useMemo(
     () => PASSWORD_RULES.map((rule) => rule.test(password)),
@@ -140,13 +142,7 @@ export default function SignupScreen() {
       }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      if (needsConfirmation) {
-        Alert.alert(
-          'Verify your email',
-          'Check your inbox to confirm your account before signing in.',
-          [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }],
-        );
-      }
+      setShowSuccessModal(true);
     } catch {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Account creation failed', 'An unexpected error occurred. Please try again.');
@@ -226,6 +222,7 @@ export default function SignupScreen() {
                   placeholder="Create a strong password"
                   placeholderTextColor={colors.textSecondary}
                   secureTextEntry={!showPassword}
+                  textContentType="newPassword"
                 />
                 <Pressable
                   style={styles.inputIconRight}
@@ -291,6 +288,7 @@ export default function SignupScreen() {
                   placeholder="Re-enter your password"
                   placeholderTextColor={colors.textSecondary}
                   secureTextEntry={!showConfirmPassword}
+                  textContentType="none"
                 />
                 <Pressable
                   style={styles.inputIconRight}
@@ -383,6 +381,44 @@ export default function SignupScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Success Modal */}
+      <Modal
+        visible={showSuccessModal}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            {/* Icon */}
+            <View style={styles.modalIconRing}>
+              <View style={styles.modalIconInner}>
+                <CheckIcon size={22} color="#fff" />
+              </View>
+            </View>
+
+            {/* Text */}
+            <Text style={styles.modalTitle}>SYSTEM INITIALIZED</Text>
+            <Text style={styles.modalSubtitle}>
+              Your account has been created.{'\n'}You're ready to build momentum.
+            </Text>
+
+            {/* CTA */}
+            <Pressable
+              style={styles.modalButton}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                setShowSuccessModal(false);
+                router.replace('/(auth)/login');
+              }}
+            >
+              <Text style={styles.modalButtonLabel}>PROCEED TO LOGIN</Text>
+              <ArrowRightIcon size={11} />
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -646,5 +682,75 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     letterSpacing: 0.2,
+  },
+
+  // Success Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: '#18181b',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+    alignItems: 'center',
+    paddingHorizontal: 28,
+    paddingTop: 36,
+    paddingBottom: 28,
+    gap: 0,
+  },
+  modalIconRing: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 1,
+    borderColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  modalIconInner: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: fontWeights.bold,
+    color: '#fff',
+    letterSpacing: 1.5,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 28,
+  },
+  modalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: colors.indexBlue,
+    borderRadius: 8,
+    paddingVertical: 13,
+    width: '100%',
+  },
+  modalButtonLabel: {
+    fontSize: 12,
+    fontWeight: fontWeights.bold,
+    color: '#fff',
+    letterSpacing: 1,
   },
 });

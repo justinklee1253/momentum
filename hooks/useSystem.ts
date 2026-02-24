@@ -37,30 +37,15 @@ export function useSystem(userId: string | null, sessionId: string | null) {
         .update({ updated_at: new Date().toISOString() })
         .eq('id', activeSessionId);
 
-      const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
-      if (refreshError || !session?.access_token) {
-        await supabase.auth.signOut();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.access_token) {
         throw new Error('Session expired. Please sign in again.');
       }
 
-      const authHeaders = { Authorization: `Bearer ${session.access_token}` };
-
-      let response = await supabase.functions.invoke('ai-chat', {
+      const response = await supabase.functions.invoke('ai-chat', {
         body: { userId, message, sessionId: activeSessionId },
-        headers: authHeaders,
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
-
-      if (response.error && (response.error as any).context?.status === 401) {
-        const { data: retryData, error: retryRefreshErr } = await supabase.auth.refreshSession();
-        if (retryRefreshErr || !retryData.session?.access_token) {
-          await supabase.auth.signOut();
-          throw new Error('Session expired. Please sign in again.');
-        }
-        response = await supabase.functions.invoke('ai-chat', {
-          body: { userId, message, sessionId: activeSessionId },
-          headers: { Authorization: `Bearer ${retryData.session.access_token}` },
-        });
-      }
 
       if (response.error) {
         console.error('ai-chat edge function error:', JSON.stringify(response.error));
@@ -71,19 +56,27 @@ export function useSystem(userId: string | null, sessionId: string | null) {
     onMutate: async ({ message, activeSessionId }) => {
       const qk = ['conversations', userId, activeSessionId];
       await queryClient.cancelQueries({ queryKey: qk });
-      const previous = queryClient.getQueryData<AIConversation[]>(qk);
-      queryClient.setQueryData<AIConversation[]>(qk, (old) => [
-        ...(old ?? []),
-        {
-          id: `temp-${Date.now()}`,
-          user_id: userId!,
-          session_id: activeSessionId,
-          role: 'USER',
-          content: message,
-          metadata: null,
-          created_at: new Date().toISOString(),
-        } as AIConversation,
-      ]);
+
+      // Snapshot server-confirmed messages only (strip any temp-* rows) for clean rollback
+      const all = queryClient.getQueryData<AIConversation[]>(qk) ?? [];
+      const previous = all.filter(m => !m.id.startsWith('temp-'));
+
+      // Only add optimistic message if seedAndSend hasn't already done it
+      if (!all.some(m => m.id.startsWith('temp-'))) {
+        queryClient.setQueryData<AIConversation[]>(qk, () => [
+          ...previous,
+          {
+            id: `temp-${Date.now()}`,
+            user_id: userId!,
+            session_id: activeSessionId,
+            role: 'USER',
+            content: message,
+            metadata: null,
+            created_at: new Date().toISOString(),
+          } as AIConversation,
+        ]);
+      }
+
       return { previous, activeSessionId };
     },
     onError: (_err, _vars, context) => {

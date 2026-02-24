@@ -67,7 +67,13 @@ function Header({ score }: { score: number }) {
 
   return (
     <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-      <View style={styles.headerLeft}>
+      <Pressable
+        style={styles.headerLeft}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          router.navigate('/(tabs)/');
+        }}
+      >
         <LinearGradient
           colors={['#3B82F6', '#9333EA']}
           start={{ x: 0, y: 0 }}
@@ -83,7 +89,7 @@ function Header({ score }: { score: number }) {
             <Text style={styles.statusText}>SYSTEM ACTIVE</Text>
           </View>
         </View>
-      </View>
+      </Pressable>
 
       <View style={styles.headerRight}>
         <Pressable
