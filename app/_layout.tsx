@@ -14,6 +14,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { colors } from '../lib/theme';
+import { AuthProvider } from '../context/AuthContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -48,19 +49,21 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.base }}>
       <QueryClientProvider client={queryClient}>
-        <StatusBar style="light" />
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.base } }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(onboarding)" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="journal/new" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="journal/[id]" />
-          <Stack.Screen name="workout/log" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="calendar/date-picker" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="metrics" />
-          <Stack.Screen name="settings" />
-        </Stack>
+        <AuthProvider queryClient={queryClient}>
+          <StatusBar style="light" />
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.base } }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(onboarding)" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="journal/new" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="journal/[id]" />
+            <Stack.Screen name="workout/log" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="calendar/date-picker" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="metrics" />
+            <Stack.Screen name="settings" />
+          </Stack>
+        </AuthProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>
   );
