@@ -199,6 +199,15 @@ function LogOutIcon({ size = 16, color = '#EF4444' }: { size?: number; color?: s
   );
 }
 
+function ArrowLeftIcon({ size = 20, color = colors.textPrimary }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M19 12H5" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="m12 19-7-7 7-7" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 function UserIcon({ size = 14, color = colors.textPrimary }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -328,6 +337,20 @@ export default function SettingsScreen() {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
+        {/* Nav Header */}
+        <View style={styles.navHeader}>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.back();
+            }}
+            hitSlop={12}
+            style={styles.backBtn}
+          >
+            <ArrowLeftIcon size={20} color={colors.textSecondary} />
+          </Pressable>
+        </View>
+
         {/* Page Header */}
         <View style={styles.pageHeader}>
           <Text style={styles.pageTitle}>Settings</Text>
@@ -602,6 +625,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
     paddingBottom: spacing.xxl,
+  },
+
+  // Nav Header
+  navHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 9999,
+    backgroundColor: colors.input,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Page Header

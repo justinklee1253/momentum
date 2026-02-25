@@ -4,6 +4,8 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
 import { colors, spacing } from '../../lib/theme';
+import { useUserId } from '../../hooks/useUserId';
+import { useSignalLog } from '../../hooks/useSignalLog';
 
 function PenIcon() {
   return (
@@ -62,13 +64,22 @@ function ActionCard({
 }
 
 export function QuickActions() {
+  const userId = useUserId();
+  const { todayEntry } = useSignalLog(userId);
+
   return (
     <View style={styles.container}>
       <ActionCard
         icon={<PenIcon />}
         title="Journal"
         subtitle="Log signal entry"
-        onPress={() => router.push('/journal/new')}
+        onPress={() => {
+          if (todayEntry) {
+            router.push(`/journal/${todayEntry.id}` as any);
+          } else {
+            router.push('/journal/new');
+          }
+        }}
       />
       <ActionCard
         icon={<ChartIcon />}

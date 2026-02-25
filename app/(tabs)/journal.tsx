@@ -96,7 +96,7 @@ function JournalEntryCard({
 
 export default function JournalTab() {
   const userId = useUserId();
-  const { data: entries, isLoading, deleteEntry, isDeletingId } = useSignalLog(userId);
+  const { data: entries, isLoading, deleteEntry, isDeletingId, todayEntry } = useSignalLog(userId);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -105,7 +105,11 @@ export default function JournalTab() {
         <Pressable
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            router.push('/journal/new');
+            if (todayEntry) {
+              router.push(`/journal/${todayEntry.id}` as any);
+            } else {
+              router.push('/journal/new');
+            }
           }}
           style={styles.newButton}
         >

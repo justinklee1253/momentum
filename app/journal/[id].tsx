@@ -7,9 +7,13 @@ import { supabase } from '../../lib/supabase';
 import { Journal } from '../../lib/database.types';
 import { colors, typography, spacing, radius } from '../../lib/theme';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { useUserId } from '../../hooks/useUserId';
+import { useSignalLog } from '../../hooks/useSignalLog';
 
 export default function JournalDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const userId = useUserId();
+  const { todayEntry } = useSignalLog(userId);
 
   const { data: entry, isLoading } = useQuery<Journal>({
     queryKey: ['journal', id],
@@ -21,17 +25,26 @@ export default function JournalDetailScreen() {
     },
   });
 
+  const isToday = !!entry && entry.id === todayEntry?.id;
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <Text style={styles.backText}>← SIGNAL</Text>
         </Pressable>
-        {entry && (
-          <Text style={styles.dateText}>
-            {format(new Date(entry.date), 'EEE, MMM d yyyy').toUpperCase()}
-          </Text>
-        )}
+        <View style={styles.headerRight}>
+          {entry && (
+            <Text style={styles.dateText}>
+              {format(new Date(entry.date), 'EEE, MMM d yyyy').toUpperCase()}
+            </Text>
+          )}
+          {isToday && (
+            <Pressable onPress={() => router.push('/journal/new')} style={styles.editBtn}>
+              <Text style={styles.editText}>EDIT</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -95,9 +108,27 @@ const styles = StyleSheet.create({
     color: colors.accent,
     letterSpacing: 1,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   dateText: {
     ...typography.micro,
     color: colors.textMuted,
+  },
+  editBtn: {
+    backgroundColor: colors.accentDim,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.borderActive,
+  },
+  editText: {
+    ...typography.micro,
+    color: colors.accent,
+    fontSize: 11,
   },
   scroll: {
     flexGrow: 1,
