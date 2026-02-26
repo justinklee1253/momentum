@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Pressable, Alert } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { colors, typography, spacing, radius } from '../../lib/theme';
+import { colors, typography, spacing, radius, fontWeights } from '../../lib/theme';
 import {
   CoachingStyle,
   COACHING_STYLE_LABELS,
@@ -12,7 +12,6 @@ import {
 } from '../../lib/constants';
 import { supabase } from '../../lib/supabase';
 import { useUserId } from '../../hooks/useUserId';
-import { Button } from '../../components/ui/Button';
 
 const STYLE_COLORS: Record<CoachingStyle, string> = {
   [CoachingStyle.DIRECT]: colors.direct,
@@ -110,7 +109,24 @@ export default function ModeScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button label="SAVE MODE" onPress={handleSave} loading={saving} />
+        <Pressable
+          onPress={saving ? undefined : handleSave}
+          style={({ pressed }) => [
+            styles.saveBtn,
+            {
+              backgroundColor: `${STYLE_COLORS[selected]}14`,
+              borderColor: `${STYLE_COLORS[selected]}4D`,
+            },
+            pressed && { opacity: 0.75 },
+            saving && { opacity: 0.5 },
+          ]}
+        >
+          {saving ? (
+            <ActivityIndicator size="small" color={STYLE_COLORS[selected]} />
+          ) : (
+            <Text style={[styles.saveBtnText, { color: STYLE_COLORS[selected] }]}>SAVE MODE</Text>
+          )}
+        </Pressable>
       </View>
     </SafeAreaView>
   );
@@ -183,5 +199,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.lg,
     paddingTop: spacing.sm,
+  },
+  saveBtn: {
+    borderRadius: radius.sm,
+    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  saveBtnText: {
+    ...typography.micro,
+    fontFamily: 'Inter_600SemiBold',
   },
 });

@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing } from '../../lib/theme';
+import { UserIcon } from '../../components/UserIcon';
 import { MomentumIndexCard } from '../../components/home/MomentumIndexCard';
 import { SystemBriefing } from '../../components/home/SystemBriefing';
 import { ProtocolRow } from '../../components/home/ProtocolRow';
@@ -84,7 +85,7 @@ function ArchiveIcon() {
   );
 }
 
-function Header({ score }: { score: number }) {
+function Header() {
   const insets = useSafeAreaInsets();
 
   return (
@@ -130,11 +131,10 @@ function Header({ score }: { score: number }) {
             router.push('/settings');
           }}
         >
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarInitial}>U</Text>
-          </View>
-          <View style={styles.scoreBadge}>
-            <Text style={styles.scoreBadgeText}>{Math.round(score)}</Text>
+          <View style={styles.avatarRing}>
+            <View style={styles.avatarInner}>
+              <UserIcon size={18} color={colors.textSecondary} />
+            </View>
           </View>
         </Pressable>
       </View>
@@ -161,7 +161,7 @@ export default function StatusTab() {
 
   return (
     <View style={styles.container}>
-      <Header score={metrics.data?.momentumScore ?? 0} />
+      <Header />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -300,8 +300,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 21,
-    paddingBottom: 17,
+    paddingHorizontal: 17,
+    paddingBottom: 13,
     backgroundColor: 'rgba(24,24,27,0.7)',
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -309,12 +309,12 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   logoGradient: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: colors.indexBlue,
@@ -323,10 +323,10 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
   },
   logoText: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 14,
-    lineHeight: 20,
-    letterSpacing: 0.35,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 16,
+    lineHeight: 24,
+    letterSpacing: 0.4,
     color: '#EDEDED',
   },
   statusRow: {
@@ -342,15 +342,15 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontFamily: 'JetBrainsMono_400Regular',
-    fontSize: 10,
-    lineHeight: 15,
-    letterSpacing: 0.5,
+    fontSize: 9,
+    lineHeight: 14,
+    letterSpacing: 0.45,
     color: colors.textSecondary,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   searchBtn: {
     width: 36,
@@ -362,42 +362,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarWrap: {
-    position: 'relative',
-  },
-  avatarCircle: {
+  avatarWrap: {},
+  avatarRing: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.input,
+    borderRadius: 9999,
+    borderWidth: 2,
+    borderColor: 'rgba(59,130,246,0.3)',
+    padding: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarInitial: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  scoreBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: colors.input,
-    borderWidth: 1,
-    borderColor: colors.border,
+  avatarInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 9999,
+    backgroundColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  scoreBadgeText: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 8,
-    lineHeight: 12,
-    color: colors.indexBlue,
+    overflow: 'hidden',
   },
   scroll: {
     flexGrow: 1,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,11 +9,21 @@ import {
   Alert,
   Switch,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import Svg, { Path, Circle, Line, Polyline, Rect } from 'react-native-svg';
 import { colors, typography, spacing, radius, fontWeights } from '../../lib/theme';
+import { CoachingStyle, COACHING_STYLE_DESCRIPTIONS } from '../../lib/constants';
+
+const STYLE_COLORS: Record<CoachingStyle, string> = {
+  [CoachingStyle.DIRECT]: colors.direct,
+  [CoachingStyle.STRATEGIC]: colors.strategic,
+  [CoachingStyle.DRIVEN]: colors.driven,
+};
 import { useAuth } from '../../hooks/useAuth';
+import { useUserId } from '../../hooks/useUserId';
+import { supabase } from '../../lib/supabase';
+import { UserIcon } from '../../components/UserIcon';
 
 // ---------------------------------------------------------------------------
 // Icon Components (Lucide-style, 14px default inside 36x36 icon boxes)
@@ -23,14 +33,6 @@ function ChevronRightIcon({ size = 12, color = colors.textMuted }: { size?: numb
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path d="M9 18l6-6-6-6" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-
-function PencilIcon({ size = 12, color = colors.indexBlue }: { size?: number; color?: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }
@@ -99,24 +101,6 @@ function TrashIcon({ size = 14, color = '#EF4444' }: { size?: number; color?: st
       <Path d="M3 6h18" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
       <Path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
       <Path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-
-function MoonIcon({ size = 16, color = colors.textPrimary }: { size?: number; color?: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-
-function InfoIcon({ size = 12, color = colors.textSecondary }: { size?: number; color?: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Circle cx={12} cy={12} r={10} stroke={color} strokeWidth={2} />
-      <Line x1={12} y1={16} x2={12} y2={12} stroke={color} strokeWidth={2} strokeLinecap="round" />
-      <Line x1={12} y1={8} x2={12.01} y2={8} stroke={color} strokeWidth={2} strokeLinecap="round" />
     </Svg>
   );
 }
@@ -208,11 +192,11 @@ function ArrowLeftIcon({ size = 20, color = colors.textPrimary }: { size?: numbe
   );
 }
 
-function UserIcon({ size = 14, color = colors.textPrimary }: { size?: number; color?: string }) {
+function PencilIcon({ size = 10, color = colors.indexBlue }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-      <Circle cx={12} cy={7} r={4} stroke={color} strokeWidth={2} />
+      <Path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }
@@ -325,8 +309,36 @@ function ToggleRow({ icon, iconBg, iconBorder, title, subtitle, value, onToggle 
 
 export default function SettingsScreen() {
   const { signOut, user, profile } = useAuth();
-  const [darkMode, setDarkMode] = useState(true);
+  const userId = useUserId();
   const [telemetry, setTelemetry] = useState(true);
+  const [identityStatement, setIdentityStatement] = useState<string | null>(null);
+  const [coachingStyle, setCoachingStyle] = useState<CoachingStyle>(CoachingStyle.DIRECT);
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .from('onboarding_profiles')
+      .select('identity_statement')
+      .eq('user_id', userId)
+      .single()
+      .then(({ data }) => {
+        if (data?.identity_statement) setIdentityStatement(data.identity_statement);
+      });
+  }, [userId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) return;
+      supabase
+        .from('ai_personality_profiles')
+        .select('coaching_style')
+        .eq('user_id', userId)
+        .single()
+        .then(({ data }) => {
+          if (data?.coaching_style) setCoachingStyle(data.coaching_style as CoachingStyle);
+        });
+    }, [userId])
+  );
 
   const userEmail = user?.email ?? profile?.email ?? '';
   const displayName = userEmail ? userEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'User';
@@ -371,14 +383,6 @@ export default function SettingsScreen() {
                 <Text style={styles.profileName}>{displayName}</Text>
                 <Text style={styles.profileEmail}>{userEmail}</Text>
               </View>
-              <Pressable
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }}
-                hitSlop={12}
-              >
-                <PencilIcon size={12} />
-              </Pressable>
             </View>
 
             <View style={styles.profileDivider} />
@@ -387,12 +391,13 @@ export default function SettingsScreen() {
               <Text style={styles.identityLabel}>IDENTITY STATEMENT</Text>
               <View style={styles.identityBox}>
                 <Text style={styles.identityText}>
-                  Set your identity statement during onboarding or edit it here to define who you are and what drives your execution.
+                  {identityStatement ?? 'No identity statement set. Tap Edit Statement to add one.'}
                 </Text>
               </View>
               <Pressable
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push('/settings/identity');
                 }}
                 style={styles.editStatementBtn}
               >
@@ -409,6 +414,7 @@ export default function SettingsScreen() {
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push('/settings/mode');
             }}
             style={styles.pressableWrap}
           >
@@ -419,10 +425,10 @@ export default function SettingsScreen() {
               <View style={styles.settingRowText}>
                 <Text style={styles.settingRowTitle}>Current Style</Text>
                 <View style={styles.coachingBadgeRow}>
-                  <View style={styles.coachingBadge}>
-                    <Text style={styles.coachingBadgeText}>STRATEGIC</Text>
+                  <View style={[styles.coachingBadge, { borderColor: STYLE_COLORS[coachingStyle], backgroundColor: `${STYLE_COLORS[coachingStyle]}18` }]}>
+                    <Text style={[styles.coachingBadgeText, { color: STYLE_COLORS[coachingStyle] }]}>{coachingStyle}</Text>
                   </View>
-                  <Text style={styles.settingRowSubtitle}>Context-aware guidance</Text>
+                  <Text style={styles.settingRowSubtitle}>{COACHING_STYLE_DESCRIPTIONS[coachingStyle]}</Text>
                 </View>
               </View>
               <ChevronRightIcon />
@@ -496,28 +502,6 @@ export default function SettingsScreen() {
                 );
               }}
             />
-          </View>
-        </View>
-
-        {/* APPEARANCE */}
-        <View style={styles.section}>
-          <SectionLabel title="APPEARANCE" />
-          <ToggleRow
-            icon={<MoonIcon />}
-            iconBg={colors.border}
-            iconBorder={colors.border}
-            title="Dark Command Mode"
-            subtitle="Enhanced contrast tweaks"
-            value={darkMode}
-            onToggle={setDarkMode}
-          />
-          <View style={styles.infoNote}>
-            <View style={{ paddingTop: 2 }}>
-              <InfoIcon />
-            </View>
-            <Text style={styles.infoNoteText}>
-              Core design language is optimized for dark mode. Only minor contrast adjustments available.
-            </Text>
           </View>
         </View>
 
@@ -842,32 +826,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(168,85,247,0.3)',
   },
   coachingBadgeText: {
     fontFamily: 'JetBrainsMono_400Regular',
     fontSize: 10,
     lineHeight: 15,
     color: '#A855F7',
-  },
-
-  // Info Note
-  infoNote: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    backgroundColor: 'rgba(39,39,42,0.5)',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(39,39,42,0.5)',
-    padding: 11,
-    marginTop: 8,
-  },
-  infoNoteText: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 10,
-    lineHeight: 16.25,
-    color: colors.textSecondary,
-    flex: 1,
   },
 
   // Version

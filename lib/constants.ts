@@ -79,9 +79,9 @@ export const COACHING_STYLE_LABELS: Record<CoachingStyle, string> = {
 };
 
 export const COACHING_STYLE_DESCRIPTIONS: Record<CoachingStyle, string> = {
-  [CoachingStyle.DIRECT]: 'Cold, precise. State facts, name what was missed, one directive.',
-  [CoachingStyle.STRATEGIC]: 'Connect to identity. Ask one strategic question.',
-  [CoachingStyle.DRIVEN]: 'Emphasize what\'s working. Push harder.',
+  [CoachingStyle.DIRECT]: 'Cold. Precise. Blunt.',
+  [CoachingStyle.STRATEGIC]: 'Strategic. Identity-aware. Probing.',
+  [CoachingStyle.DRIVEN]: 'Relentless. Energized. Loud.',
 };
 
 export const COACHING_TONE_PREVIEWS: Record<CoachingStyle, string> = {

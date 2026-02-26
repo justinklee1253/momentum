@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing } from '../../lib/theme';
+import { UserIcon } from '../../components/UserIcon';
 import { useProtocols } from '../../hooks/useProtocols';
 import { useUserId } from '../../hooks/useUserId';
 import { useMetrics } from '../../hooks/useMetrics';
@@ -62,7 +63,7 @@ function PlusIcon() {
   );
 }
 
-function Header({ score }: { score: number }) {
+function Header() {
   const insets = useSafeAreaInsets();
 
   return (
@@ -105,11 +106,10 @@ function Header({ score }: { score: number }) {
             router.push('/settings');
           }}
         >
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarInitial}>U</Text>
-          </View>
-          <View style={styles.scoreBadge}>
-            <Text style={styles.scoreBadgeText}>{Math.round(score)}</Text>
+          <View style={styles.avatarRing}>
+            <View style={styles.avatarInner}>
+              <UserIcon size={18} color={colors.textSecondary} />
+            </View>
           </View>
         </Pressable>
       </View>
@@ -125,7 +125,7 @@ export default function ProtocolsTab() {
 
   return (
     <View style={styles.container}>
-      <Header score={metrics.data?.momentumScore ?? 0} />
+      <Header />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -265,43 +265,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarWrap: {
-    position: 'relative',
-  },
-  avatarCircle: {
+  avatarWrap: {},
+  avatarRing: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.input,
+    borderRadius: 9999,
+    borderWidth: 2,
+    borderColor: 'rgba(59,130,246,0.3)',
+    padding: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 9999,
+    backgroundColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-  },
-  avatarInitial: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  scoreBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: colors.input,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scoreBadgeText: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 8,
-    lineHeight: 12,
-    color: colors.indexBlue,
   },
   scroll: {
     paddingHorizontal: spacing.md,
