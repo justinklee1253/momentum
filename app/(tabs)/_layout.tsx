@@ -5,6 +5,7 @@ import { BlurView } from 'expo-blur';
 import Svg, { Path } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { colors } from '../../lib/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function RocketIcon({ focused }: { focused: boolean }) {
   const c = focused ? colors.indexBlue : colors.textSecondary;
@@ -90,11 +91,17 @@ function TabBarBackground() {
 }
 
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
+  const tabBarStyle = {
+    ...styles.tabBar,
+    paddingBottom: insets.bottom || 20,
+    height: 44 + (insets.bottom || 20),
+  };
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: tabBarStyle,
         tabBarActiveTintColor: colors.indexBlue,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarBackground: () => <TabBarBackground />,
@@ -191,8 +198,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    height: 64,
-    paddingBottom: 20,
     paddingTop: 8,
     position: 'absolute',
     bottom: 0,

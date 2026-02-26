@@ -754,9 +754,9 @@ const styles = StyleSheet.create({
   },
   bottomArea: {
     paddingHorizontal: 16,
-    paddingBottom: 80,
+    paddingBottom: 110,
     paddingTop: 16,
-    gap: 16,
+    gap: 20,
   },
   pillRow: {
     flexDirection: 'row',
@@ -851,7 +851,7 @@ const styles = StyleSheet.create({
   inputRowMessages: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    paddingBottom: 80,
+    paddingBottom: 110,
     backgroundColor: colors.base,
   },
   circleBtn: {
